@@ -4,7 +4,7 @@
 
 ;; Author: Yuta Fujita <ofnhwx@komunan.net>
 ;; URL: https://github.com/ofnhwx/ls-lisp-extension
-;; Version: 0.01
+;; Version: 0.02
 ;; Package-Requires: ((f "0.20.0") (s "1.12.0"))
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -26,6 +26,7 @@
 
 (eval-and-compile
   (require 'ls-lisp)
+  (require 'cl-lib)
   (require 'f)
   (require 's))
 
@@ -184,7 +185,7 @@
     (setf (nth 2 file-attr) (propertize (format "%s" file-uid) 'font-lock-face 'ls-lisp-extension-dired-uid-face))
     (setf (nth 3 file-attr) (propertize (format "%s" file-gid) 'font-lock-face 'ls-lisp-extension-dired-gid-face))
     (setf (nth 8 file-attr) (mapconcat (lambda (c)
-                                         (case c
+                                         (cl-case c
                                            (?d (propertize "d" 'font-lock-face 'ls-lisp-extension-dired-modes-d-face))
                                            (?l (propertize "l" 'font-lock-face 'ls-lisp-extension-dired-modes-l-face))
                                            (?r (propertize "r" 'font-lock-face 'ls-lisp-extension-dired-modes-r-face))
