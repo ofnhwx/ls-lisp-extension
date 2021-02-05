@@ -4,7 +4,7 @@
 
 ;; Author: Yuta Fujita <ofnhwx@komunan.net>
 ;; URL: https://github.com/ofnhwx/ls-lisp-extension
-;; Version: 0.02
+;; Version: 0.03
 ;; Package-Requires: ((f "0.20.0") (s "1.12.0"))
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -231,24 +231,16 @@
       (propertize formated-file-size 'font-lock-face 'ls-lisp-extension-dired-size-default-face)))))
 
 ;;;###autoload
-(define-minor-mode ls-lisp-extension-mode
-  "`ls-lisp' をちょっと改造します."
-  :group 'ls-lisp-extension
-  (cond
-   (ls-lisp-extension-mode
-    (advice-add 'ls-lisp-format :filter-args #'ls-lisp-extension-format)
-    (advice-add 'ls-lisp-format-time :around #'ls-lisp-extension-format-time)
-    (advice-add 'ls-lisp-format-file-size :around #'ls-lisp-extension-format-file-size))
-   (t
-    (advice-remove 'ls-lisp-format #'ls-lisp-extension-format)
-    (advice-remove 'ls-lisp-format-time #'ls-lisp-extension-format-time)
-    (advice-remove 'ls-lisp-format-file-size #'ls-lisp-extension-format-file-size))))
+(defun ls-lisp-extension-on ()
+  (advice-add 'ls-lisp-format :filter-args #'ls-lisp-extension-format)
+  (advice-add 'ls-lisp-format-time :around #'ls-lisp-extension-format-time)
+  (advice-add 'ls-lisp-format-file-size :around #'ls-lisp-extension-format-file-size))
 
 ;;;###autoload
-(define-globalized-minor-mode global-ls-lisp-extension-mode
-  ls-lisp-extension-mode
-  (lambda () (ls-lisp-extension-mode 1))
-  :group 'ls-lisp-extension)
+(defun ls-lisp-extension-off ()
+  (advice-remove 'ls-lisp-format #'ls-lisp-extension-format)
+  (advice-remove 'ls-lisp-format-time #'ls-lisp-extension-format-time)
+  (advice-remove 'ls-lisp-format-file-size #'ls-lisp-extension-format-file-size))
 
 (provide 'ls-lisp-extension)
 
