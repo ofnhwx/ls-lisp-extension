@@ -1,4 +1,4 @@
-;;; ls-lisp-extension.el --- パッケージ概要
+;;; ls-lisp-extension.el --- ls-lisp をちょっと改造
 
 ;; Copyright (C) 2021 by Yuta Fujita
 
