@@ -4,7 +4,7 @@
 
 ;; Author: Yuta Fujita <ofnhwx@komunan.net>
 ;; URL: https://github.com/ofnhwx/ls-lisp-extension
-;; Version: 0.03
+;; Version: 0.04
 ;; Package-Requires: ((f "0.20.0") (s "1.12.0"))
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -169,75 +169,78 @@
          (file-uid   (nth 2 file-attr))
          (file-gid   (nth 3 file-attr))
          (file-modes (nth 8 file-attr)))
-    (cond
-     ((or (s-starts-with? "." file-name)
-          (s-starts-with? "#" file-name)
-          (s-starts-with? "~" file-name))
-      (setq file-name (propertize file-name 'font-lock-face 'ls-lisp-extension-dired-hidden-file-face)))
-     ((eq file-type t)
-      (setq file-name (propertize file-name 'font-lock-face 'ls-lisp-extension-dired-directory-face)))
-     ((stringp file-type)
-      (setq file-name (propertize file-name 'font-lock-face 'ls-lisp-extension-dired-symlink-face)))
-     ((s-contains? "x" file-modes)
-      (setq file-name (propertize file-name 'font-lock-face 'ls-lisp-extension-dired-modes-x-face))))
+    (setq file-name (ls-lisp-extension-format-file-name file-name file-type file-modes))
     (if (stringp file-type)
         (setf (nth 0 file-attr) (propertize (f-short file-type) 'font-lock-face 'ls-lisp-extension-dired-symlink-face)))
     (setf (nth 2 file-attr) (propertize (format "%s" file-uid) 'font-lock-face 'ls-lisp-extension-dired-uid-face))
     (setf (nth 3 file-attr) (propertize (format "%s" file-gid) 'font-lock-face 'ls-lisp-extension-dired-gid-face))
-    (setf (nth 8 file-attr) (mapconcat (lambda (c)
-                                         (cl-case c
-                                           (?d (propertize "d" 'font-lock-face 'ls-lisp-extension-dired-modes-d-face))
-                                           (?l (propertize "l" 'font-lock-face 'ls-lisp-extension-dired-modes-l-face))
-                                           (?r (propertize "r" 'font-lock-face 'ls-lisp-extension-dired-modes-r-face))
-                                           (?w (propertize "w" 'font-lock-face 'ls-lisp-extension-dired-modes-w-face))
-                                           (?x (propertize "x" 'font-lock-face 'ls-lisp-extension-dired-modes-x-face))
-                                           (?s (propertize "s" 'font-lock-face 'ls-lisp-extension-dired-modes-s-face))
-                                           (?S (propertize "S" 'font-lock-face 'ls-lisp-extension-dired-modes-S-face))
-                                           (?t (propertize "t" 'font-lock-face 'ls-lisp-extension-dired-modes-t-face))
-                                           (?T (propertize "T" 'font-lock-face 'ls-lisp-extension-dired-modes-T-face))
-                                           (?- (propertize "-" 'font-lock-face 'ls-lisp-extension-dired-modes---face))
-                                           (t  (propertize (string c) 'font-lock-face 'ls-lisp-extension-dired-modes---face))))
-                                       file-modes ""))
+    (setf (nth 8 file-attr) (ls-lisp-extension-format-file-mods file-modes))
     (list file-name file-attr file-size switches time-index)))
 
+(defun ls-lisp-extension-hidden-file-p (file-name)
+  (or (s-starts-with? "." file-name)
+      (s-starts-with? "#" file-name)
+      (s-starts-with? "~" file-name)))
+
+(defun ls-lisp-extension-format-file-name (file-name file-type file-modes)
+  (let ((face (cond
+               ((ls-lisp-extension-hidden-file-p file-name) 'ls-lisp-extension-dired-hidden-file-face)
+               ((eq file-type t)                            'ls-lisp-extension-dired-directory-face)
+               ((stringp file-type)                         'ls-lisp-extension-dired-symlink-face)
+               ((s-contains? "x" file-modes)                'ls-lisp-extension-dired-modes-x-face))))
+    (if face
+        (propertize file-name 'font-lock-face face)
+      file-name)))
+
+(defun ls-lisp-extension-format-file-mods (file-modes)
+  (mapconcat (lambda (c)
+               (let ((face (cl-case c
+                             (?d 'ls-lisp-extension-dired-modes-d-face)
+                             (?l 'ls-lisp-extension-dired-modes-l-face)
+                             (?r 'ls-lisp-extension-dired-modes-r-face)
+                             (?w 'ls-lisp-extension-dired-modes-w-face)
+                             (?x 'ls-lisp-extension-dired-modes-x-face)
+                             (?s 'ls-lisp-extension-dired-modes-s-face)
+                             (?S 'ls-lisp-extension-dired-modes-S-face)
+                             (?t 'ls-lisp-extension-dired-modes-t-face)
+                             (?T 'ls-lisp-extension-dired-modes-T-face)
+                             (?- 'ls-lisp-extension-dired-modes---face)
+                             (t  'ls-lisp-extension-dired-modes---face))))
+                 (propertize (string c) 'font-lock-face face)))
+             file-modes ""))
+
 (defun ls-lisp-extension-format-time (fn file-attr time-index)
-  (let* ((time (nth (or time-index 5) file-attr))
+  (let* ((formated-time (funcall fn file-attr time-index))
+         (time (nth (or time-index 5) file-attr))
          (diff (time-subtract time nil))
-         (formated-time (funcall fn file-attr time-index)))
-    (cond
-     ((time-less-p diff -31536000)
-      (propertize formated-time 'font-lock-face 'ls-lisp-extension-dired-time-over-1y-face))
-     ((time-less-p diff -2592000)
-      (propertize formated-time 'font-lock-face 'ls-lisp-extension-dired-time-over-1m-face))
-     ((time-less-p diff -604800)
-      (propertize formated-time 'font-lock-face 'ls-lisp-extension-dired-time-over-1w-face))
-     ((time-less-p diff -86400)
-      (propertize formated-time 'font-lock-face 'ls-lisp-extension-dired-time-over-1d-face))
-     (t
-      (propertize formated-time 'font-lock-face 'ls-lisp-extension-dired-time-default-face)))))
+         (face (cond
+                ((time-less-p diff -31536000) 'ls-lisp-extension-dired-time-over-1y-face)
+                ((time-less-p diff -2592000)  'ls-lisp-extension-dired-time-over-1m-face)
+                ((time-less-p diff -604800)   'ls-lisp-extension-dired-time-over-1w-face)
+                ((time-less-p diff -86400)    'ls-lisp-extension-dired-time-over-1d-face)
+                (t                            'ls-lisp-extension-dired-time-default-face))))
+    (propertize formated-time 'font-lock-face face)))
 
 (defun ls-lisp-extension-format-file-size (fn file-size human-readable)
-  (let ((formated-file-size (funcall fn file-size human-readable)))
-    (cond
-     ((>= file-size 1099511627776)
-      (propertize formated-file-size 'font-lock-face 'ls-lisp-extension-dired-size-over-1t-face))
-     ((>= file-size 1073741824)
-      (propertize formated-file-size 'font-lock-face 'ls-lisp-extension-dired-size-over-1g-face))
-     ((>= file-size 1048576)
-      (propertize formated-file-size 'font-lock-face 'ls-lisp-extension-dired-size-over-1m-face))
-     ((>= file-size 1024)
-      (propertize formated-file-size 'font-lock-face 'ls-lisp-extension-dired-size-over-1k-face))
-     (t
-      (propertize formated-file-size 'font-lock-face 'ls-lisp-extension-dired-size-default-face)))))
+  (let ((formated-file-size (funcall fn file-size human-readable))
+        (face (cond
+               ((>= file-size 1099511627776) 'ls-lisp-extension-dired-size-over-1t-face)
+               ((>= file-size 1073741824)    'ls-lisp-extension-dired-size-over-1g-face)
+               ((>= file-size 1048576)       'ls-lisp-extension-dired-size-over-1m-face)
+               ((>= file-size 1024)          'ls-lisp-extension-dired-size-over-1k-face)
+               (t                            'ls-lisp-extension-dired-size-default-face))))
+    (propertize formated-file-size 'font-lock-face face)))
 
 ;;;###autoload
 (defun ls-lisp-extension-on ()
+  (interactive)
   (advice-add 'ls-lisp-format :filter-args #'ls-lisp-extension-format)
   (advice-add 'ls-lisp-format-time :around #'ls-lisp-extension-format-time)
   (advice-add 'ls-lisp-format-file-size :around #'ls-lisp-extension-format-file-size))
 
 ;;;###autoload
 (defun ls-lisp-extension-off ()
+  (interactive)
   (advice-remove 'ls-lisp-format #'ls-lisp-extension-format)
   (advice-remove 'ls-lisp-format-time #'ls-lisp-extension-format-time)
   (advice-remove 'ls-lisp-format-file-size #'ls-lisp-extension-format-file-size))
